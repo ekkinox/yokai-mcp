@@ -1,4 +1,4 @@
-module github.com/ankorstore/yokai-http-template
+module github.com/ekkinox/yokai-mcp
 
 go 1.23
 
