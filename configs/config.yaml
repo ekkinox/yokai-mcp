@@ -43,6 +43,20 @@ modules:
         modules:
           expose: true
   http:
+    client:
+      timeout: 30
+      log:
+        request:
+          enabled: true
+          body: true
+          level: info
+        response:
+          enabled: true
+          body: true
+          level: info
+          level_from_response: true
+      trace:
+        enabled: true
     server:
       address: ":8080"
       trace:
