@@ -28,19 +28,19 @@ func (r *WeatherResource) Name() string {
 }
 
 func (r *WeatherResource) URI() string {
-	return "weather://{city}"
+	return "weather://paris"
 }
 
-func (r *WeatherResource) Options() []mcp.ResourceTemplateOption {
-	return []mcp.ResourceTemplateOption{
-		mcp.WithTemplateDescription("Search weather information for a city on https://wttr.in/"),
-		mcp.WithTemplateMIMEType("text/plain"),
+func (r *WeatherResource) Options() []mcp.ResourceOption {
+	return []mcp.ResourceOption{
+		mcp.WithResourceDescription("Search weather information for a city on https://wttr.in/"),
+		mcp.WithMIMEType("text/plain"),
 	}
 }
 
-func (r *WeatherResource) Handle() server.ResourceTemplateHandlerFunc {
+func (r *WeatherResource) Handle() server.ResourceHandlerFunc {
 	return func(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
-		city := request.Params.Arguments["city"]
+		city := "paris"
 
 		url := fmt.Sprintf("%s/%s?format=3", r.config.GetString("config.weather.host"), city)
 

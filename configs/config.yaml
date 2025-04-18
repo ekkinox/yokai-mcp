@@ -86,5 +86,6 @@ modules:
 config:
   weather:
     host: "https://wttr.in"
+    city: "Paris"
   books:
     default_owner: "John Doe"

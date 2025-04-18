@@ -28,6 +28,6 @@ func Register() fx.Option {
 		mcp.AsMCPTool(tool.NewCreateBookTool),
 		mcp.AsMCPTool(tool.NewDeleteBookTool),
 		// mcp resource
-		mcp.AsMCPResourceTemplate(resource.NewWeatherResource),
+		mcp.AsMCPResource(resource.NewWeatherResource),
 	)
 }
