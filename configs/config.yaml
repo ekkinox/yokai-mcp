@@ -84,5 +84,7 @@ modules:
         - "connection:reset-session"
         - "connection:close"
 config:
+  weather:
+    host: "https://wttr.in"
   books:
     default_owner: "John Doe"
