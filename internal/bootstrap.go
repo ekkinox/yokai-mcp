@@ -7,7 +7,10 @@ import (
 
 	"github.com/ankorstore/yokai/fxconfig"
 	"github.com/ankorstore/yokai/fxcore"
+	"github.com/ankorstore/yokai/fxhttpclient"
 	"github.com/ankorstore/yokai/fxhttpserver"
+	"github.com/ankorstore/yokai/fxsql"
+	"github.com/ekkinox/yokai-mcp/pkg/mcp"
 	"go.uber.org/fx"
 )
 
@@ -22,10 +25,11 @@ var RootDir string
 var Bootstrapper = fxcore.NewBootstrapper().WithOptions(
 	// modules registration
 	fxhttpserver.FxHttpServerModule,
+	fxhttpclient.FxHttpClientModule,
+	fxsql.FxSQLModule,
+	mcp.MCPModule,
 	// dependencies registration
 	Register(),
-	// routing registration
-	Router(),
 )
 
 // Run starts the application, with a provided [context.Context].

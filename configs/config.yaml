@@ -1,5 +1,5 @@
 app:
-  name: http-app
+  name: yokai-mcp
   version: 0.1.0
 modules:
   core:
@@ -59,3 +59,30 @@ modules:
   trace:
     processor:
       type: noop
+  mcp:
+    name: "Yokai MCP"
+    version: 1.0.0
+    address: ":3333"
+  sql:
+    driver: mysql
+    dsn: ${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/${MYSQL_DATABASE}?parseTime=true
+    migrations:
+      path: db/migrations
+    log:
+      enabled: true
+      level: debug
+      arguments: true
+      exclude:
+        - "connection:ping"
+        - "connection:reset-session"
+        - "connection:close"
+    trace:
+      enabled: true
+      arguments: true
+      exclude:
+        - "connection:ping"
+        - "connection:reset-session"
+        - "connection:close"
+config:
+  books:
+    default_owner: "John Doe"

@@ -1,5 +1,5 @@
 ## Multistage build
-FROM golang:1.23 as build
+FROM golang:1.24 as build
 ENV CGO_ENABLED=0
 ENV GOOS=linux
 ENV GOARCH=amd64
@@ -16,6 +16,7 @@ WORKDIR /
 # Uncomment if you application provides HTTP templates
 # COPY --from=build /src/templates /templates
 COPY --from=build /src/configs /configs
+COPY --from=build /src/db /db
 COPY --from=build /app /app
 
 ENTRYPOINT ["/app"]

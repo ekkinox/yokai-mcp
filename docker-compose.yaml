@@ -1,14 +1,17 @@
 services:
-  http-app-server:
+  yokai-mcp-server:
+    container_name: yokai-mcp-server
     build:
       dockerfile: dev.Dockerfile
       context: .
     networks:
-      - http-app-network
+      - yokai-mcp-network
     ports:
+      - "3333:3333"
       - "8080:8080"
       - "8081:8081"
     expose:
+      - "3333"
       - "8080"
       - "8081"
     volumes:
@@ -16,6 +19,36 @@ services:
     env_file:
       - .env
 
+  yokai-mcp-database:
+    container_name: yokai-mcp-database
+    image: mysql:8
+    restart: always
+    networks:
+      - yokai-mcp-network
+    ports:
+      - "3306:3306"
+    expose:
+      - "3306"
+    volumes:
+      - yokai-mcp-database-volume:/var/lib/mysql
+    env_file:
+      - .env
+
+  yokai-mcp-jaeger:
+    container_name: yokai-mcp-jaeger
+    image: jaegertracing/all-in-one
+    networks:
+      - yokai-mcp-network
+    ports:
+      - "4317:4317"
+      - "16686:16686"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
+volumes:
+  yokai-mcp-database-volume:
+    driver: local
+
 networks:
-  http-app-network:
+  yokai-mcp-network:
     driver: bridge
