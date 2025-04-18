@@ -43,6 +43,8 @@ This template is following the [recommended project layout](https://go.dev/doc/m
   - `mcp/`: MCP API
   - `bootstrap.go`: bootstrap
   - `register.go`: dependencies registration
+- `pkg`:
+  - `mcp`: Work in progress Yokai MCP module
 
 ### Makefile
 
