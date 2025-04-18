@@ -44,7 +44,7 @@ func (r *WeatherResource) Handle() server.ResourceHandlerFunc {
 
 		url := fmt.Sprintf("%s/%s?format=3", r.config.GetString("config.weather.host"), city)
 
-		req, err := http.NewRequest(http.MethodGet, url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			return nil, err
 		}
