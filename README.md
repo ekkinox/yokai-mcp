@@ -1,35 +1,34 @@
-# Yokai HTTP Template
+# Yokai MCP Server Demo
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Go version](https://img.shields.io/badge/Go-1.23-blue)](https://go.dev/)
+[![Go version](https://img.shields.io/badge/Go-1.24-blue)](https://go.dev/)
 [![Documentation](https://img.shields.io/badge/Doc-online-cyan)](https://ankorstore.github.io/yokai/)
 
-> HTTP application template based on the [Yokai](https://github.com/ankorstore/yokai) Go framework.
+> [MCP server](https://modelcontextprotocol.io/introduction) demo application, based on the [Yokai](https://github.com/ankorstore/yokai) Go framework.
 
 <!-- TOC -->
 * [Documentation](#documentation)
 * [Overview](#overview)
   * [Layout](#layout)
   * [Makefile](#makefile)
-* [Getting started](#getting-started)
-  * [Installation](#installation)
-    * [With GitHub](#with-github)
-    * [With gonew](#with-gonew)
-  * [Usage](#usage)
+* [Usage](#usage)
+  * [Start the MCP server](#start-the-mcp-server)
+  * [Configure your MCP client](#configure-your-mcp-client)
 <!-- TOC -->
 
 ## Documentation
 
 For more information about the [Yokai](https://github.com/ankorstore/yokai) framework, you can check its [documentation](https://ankorstore.github.io/yokai).
 
+For MCP, you can check its [documentation](https://modelcontextprotocol.io/introduction).
+
 ## Overview
 
-This template provides:
+This demo application provides an application that offers books management, and:
 
-- a ready to extend [Yokai](https://github.com/ankorstore/yokai) application, with the [HTTP server](https://ankorstore.github.io/yokai/modules/fxhttpserver/) module installed
-- a ready to use [dev environment](docker-compose.yaml), based on [Air](https://github.com/air-verse/air) (for live reloading)
-- a ready to use [Dockerfile](Dockerfile) for production
-- some examples of [handler](internal/api/handler/example.go) and [test](internal/api/handler/example_test.go) to get started
+- exposes via HTTP API the list of books
+- exposes via MCP tools for LLMs to list, create and delete books
+
 
 ### Layout
 
@@ -37,11 +36,13 @@ This template is following the [recommended project layout](https://go.dev/doc/m
 
 - `cmd/`: entry points
 - `configs/`: configuration files
+- `db/`: database migration files
 - `internal/`:
-  - `handler/`: HTTP handler and test examples
+  - `domain/`: Books management domain (model, repo, service)
+  - `http/`: HTTP API
+  - `mcp/`: MCP API
   - `bootstrap.go`: bootstrap
   - `register.go`: dependencies registration
-  - `router.go`: routing registration
 
 ### Makefile
 
@@ -56,34 +57,44 @@ make test   # run tests
 make lint   # run linter
 ```
 
-## Getting started
+## Usage
 
-### Installation
+### Start the MCP server
 
-#### With GitHub
-
-You can create your repository [using the GitHub template](https://github.com/new?template_name=yokai-http-template&template_owner=ankorstore).
-
-It will automatically rename your project resources and push them, this operation can take a few minutes.
-
-Once ready, after cloning and going into your repository, simply run:
+After cloning the repository, simply run
 
 ```shell
-make fresh
+make fresh && make logs
 ```
 
-#### With gonew
+This will provide:
+- [http://localhost:8080/books](http://localhost:8080/books): HTTP API endpoint, to list the books
+- [http://localhost:3333/sse](http://localhost:3333/sse): MCP SSE server endpoint, for the MCP clients
+- [http://localhost:8081](http://localhost:8081): Yokai dashboard
 
-You can install [gonew](https://go.dev/blog/gonew), and simply run:
+### Configure your MCP client
 
-```shell
-gonew github.com/ekkinox/yokai-mcp github.com/foo/bar
-cd bar
-make fresh
+If you use MCP compatible applications like [Cursor](https://www.cursor.com/), or [Claude desktop](https://claude.ai/download), you can register this application as MCP server:
+
+```json
+{
+  "mcpServers": {
+    "yokai": {
+      "url": "http://localhost:3333/sse"
+    }
+  }
+}
 ```
 
-### Usage
+Note, if you client does not support remote MCP servers, you can use a [local proxy](https://developers.cloudflare.com/agents/guides/test-remote-mcp-server/#connect-your-remote-mcp-server-to-claude-desktop-via-a-local-proxy):
 
-Once ready, the application will be available on:
-- [http://localhost:8080](http://localhost:8080) for the application HTTP server
-- [http://localhost:8081](http://localhost:8081) for the application core dashboard
+```json
+{
+  "mcpServers": {
+    "yokai": {
+      "command": "npx",
+      "args": ["mcp-remote", "http://localhost:3333/sse"]
+    }
+  }
+}
+```
