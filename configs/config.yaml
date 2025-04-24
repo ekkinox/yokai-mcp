@@ -4,6 +4,7 @@ app:
 modules:
   core:
     server:
+      expose: true
       address: ":8081"
       dashboard:
         enabled: true
@@ -74,9 +75,26 @@ modules:
     processor:
       type: noop
   mcp:
-    name: "Yokai MCP"
-    version: 1.0.0
-    address: ":3333"
+    server:
+      name: "Yokai MCP"
+      version: 1.0.0
+      capabilities:
+        resource: true
+        prompt: true
+        tool: true
+        log: true
+      transport:
+        sse:
+          expose: true
+          address: ":3333"
+          base_url: ""
+          base_path: ""
+          sse_endpoint: "/sse"
+          message_endpoint: "/message"
+          keep_alive: true
+          keep_alive_interval: 10
+        stdio:
+          expose: false
   sql:
     driver: mysql
     dsn: ${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/${MYSQL_DATABASE}?parseTime=true

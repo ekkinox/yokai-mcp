@@ -1,4 +1,4 @@
-package mcp
+package sse
 
 import (
 	"context"
@@ -13,32 +13,43 @@ import (
 )
 
 const (
+	System          = "mcpserver"
+	Transport       = "sse"
 	HeaderRequestID = "X-Request-Id"
 	RequestID       = "requestID"
 	SessionID       = "sessionID"
-	Transport       = "transport"
 )
 
 type CtxRequestIdKey struct{}
 type CtxSessionIdKey struct{}
 type CtxRootSpanKey struct{}
 
-type MCPSSEContextHandler struct {
-	generator uuid.UuidGenerator
+type MCPSSEServerContextHandler struct {
+	generator      uuid.UuidGenerator
+	tracerProvider oteltrace.TracerProvider
+	logger         *log.Logger
 }
 
-func NewMCPSSEContextHandler(generator uuid.UuidGenerator) *MCPSSEContextHandler {
-	return &MCPSSEContextHandler{
-		generator: generator,
+func NewMCPSSEServerContextHandler(
+	generator uuid.UuidGenerator,
+	tracerProvider oteltrace.TracerProvider,
+	logger *log.Logger,
+) *MCPSSEServerContextHandler {
+	return &MCPSSEServerContextHandler{
+		generator:      generator,
+		tracerProvider: tracerProvider,
+		logger:         logger,
 	}
 }
 
-func (h *MCPSSEContextHandler) Handle() server.SSEContextFunc {
+func (h *MCPSSEServerContextHandler) Handle() server.SSEContextFunc {
 	return func(ctx context.Context, r *http.Request) context.Context {
+		// sessionId propagation
 		sID := r.URL.Query().Get("sessionId")
 
 		ctx = context.WithValue(ctx, CtxSessionIdKey{}, sID)
 
+		// requestId propagation
 		rID := r.Header.Get(HeaderRequestID)
 
 		if rID == "" {
@@ -48,24 +59,31 @@ func (h *MCPSSEContextHandler) Handle() server.SSEContextFunc {
 
 		ctx = context.WithValue(ctx, CtxRequestIdKey{}, rID)
 
+		// tracer propagation
+		ctx = trace.WithContext(ctx, h.tracerProvider)
+
 		ctx, span := trace.CtxTracer(ctx).Start(
 			ctx,
 			"MCP",
 			oteltrace.WithNewRoot(),
 			oteltrace.WithSpanKind(oteltrace.SpanKindServer),
 			oteltrace.WithAttributes(
+				attribute.String("system", System),
+				attribute.String("transport", Transport),
 				attribute.String(SessionID, sID),
 				attribute.String(RequestID, rID),
-				attribute.String(Transport, "sse"),
 			),
 		)
+
 		ctx = context.WithValue(ctx, CtxRootSpanKey{}, span)
 
-		logger := log.CtxLogger(ctx).
+		// logger propagation
+		logger := h.logger.
 			With().
+			Str("system", System).
+			Str("transport", Transport).
 			Str(SessionID, sID).
 			Str(RequestID, rID).
-			Str(Transport, "sse").
 			Logger()
 
 		logger.
@@ -77,26 +95,4 @@ func (h *MCPSSEContextHandler) Handle() server.SSEContextFunc {
 
 		return logger.WithContext(ctx)
 	}
-}
-
-type MCPSSEServer struct {
-	server *server.SSEServer
-}
-
-func NewMCPSSEServer(mcpServer *server.MCPServer, opts ...server.SSEOption) *MCPSSEServer {
-	return &MCPSSEServer{
-		server: server.NewSSEServer(mcpServer, opts...),
-	}
-}
-
-func (s *MCPSSEServer) Start(ctx context.Context, addr string) error {
-	log.CtxLogger(ctx).Info().Msgf("starting MCP SSE server on %s", addr)
-
-	return s.server.Start(addr)
-}
-
-func (s *MCPSSEServer) Stop(ctx context.Context) error {
-	log.CtxLogger(ctx).Info().Msg("stopping MCP SSE server")
-
-	return s.server.Shutdown(ctx)
 }

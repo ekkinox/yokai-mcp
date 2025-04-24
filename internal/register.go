@@ -22,12 +22,16 @@ func Register() fx.Option {
 		// http
 		fxhttpserver.AsHandler("GET", "/books", handler.NewListBooksHandler),
 		// mcp prompts
-		mcp.AsMCPPrompt(prompt.NewGreetPrompt),
+		mcp.AsMCPServerPrompt(prompt.NewGreetPrompt),
 		// mcp tools
-		mcp.AsMCPTool(tool.NewListBooksTool),
-		mcp.AsMCPTool(tool.NewCreateBookTool),
-		mcp.AsMCPTool(tool.NewDeleteBookTool),
+		mcp.AsMCPServerTools(
+			tool.NewListBooksTool,
+			tool.NewCreateBookTool,
+			tool.NewDeleteBookTool,
+		),
 		// mcp resource
-		mcp.AsMCPResource(resource.NewWeatherResource),
+		mcp.AsMCPServerResources(
+			resource.NewWeatherResource,
+		),
 	)
 }

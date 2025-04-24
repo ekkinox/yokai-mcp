@@ -1,10 +1,12 @@
-package mcp
+package server
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/ankorstore/yokai/config"
 	"github.com/ankorstore/yokai/log"
+	"github.com/ekkinox/yokai-mcp/pkg/mcp/server/sse"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"go.opentelemetry.io/otel/attribute"
@@ -13,15 +15,25 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-func MCPHooks() *server.Hooks {
+type MCPServerHooksProvider struct {
+	config *config.Config
+}
+
+func NewMCPServerHooksProvider(config *config.Config) *MCPServerHooksProvider {
+	return &MCPServerHooksProvider{
+		config: config,
+	}
+}
+
+func (p *MCPServerHooksProvider) Provide() *server.Hooks {
 	hooks := &server.Hooks{}
 
 	hooks.AddOnRegisterSession(func(ctx context.Context, session server.ClientSession) {
-		log.CtxLogger(ctx).Info().Str(SessionID, session.SessionID()).Msg("MCP session registered")
+		log.CtxLogger(ctx).Info().Str(sse.SessionID, session.SessionID()).Msg("MCP session registered")
 	})
 
 	hooks.AddBeforeAny(func(ctx context.Context, id any, method mcp.MCPMethod, message any) {
-		if span, ok := ctx.Value(CtxRootSpanKey{}).(oteltrace.Span); ok {
+		if span, ok := ctx.Value(sse.CtxRootSpanKey{}).(oteltrace.Span); ok {
 			rwSpan, ok := span.(otelsdktrace.ReadWriteSpan)
 			if ok {
 				span.SetName(fmt.Sprintf("%s %s", rwSpan.Name(), string(method)))
@@ -34,7 +46,7 @@ func MCPHooks() *server.Hooks {
 	})
 
 	hooks.AddOnSuccess(func(ctx context.Context, id any, method mcp.MCPMethod, message any, result any) {
-		if span, ok := ctx.Value(CtxRootSpanKey{}).(oteltrace.Span); ok {
+		if span, ok := ctx.Value(sse.CtxRootSpanKey{}).(oteltrace.Span); ok {
 			span.SetStatus(codes.Ok, "MCP call success")
 			span.End()
 		}
@@ -43,7 +55,7 @@ func MCPHooks() *server.Hooks {
 	})
 
 	hooks.AddOnError(func(ctx context.Context, id any, method mcp.MCPMethod, message any, err error) {
-		if span, ok := ctx.Value(CtxRootSpanKey{}).(oteltrace.Span); ok {
+		if span, ok := ctx.Value(sse.CtxRootSpanKey{}).(oteltrace.Span); ok {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, "MCP call error")
 			span.End()
@@ -53,7 +65,7 @@ func MCPHooks() *server.Hooks {
 	})
 
 	hooks.AddBeforeCallTool(func(ctx context.Context, id any, message *mcp.CallToolRequest) {
-		if span, ok := ctx.Value(CtxRootSpanKey{}).(oteltrace.Span); ok {
+		if span, ok := ctx.Value(sse.CtxRootSpanKey{}).(oteltrace.Span); ok {
 			rwSpan, ok := span.(otelsdktrace.ReadWriteSpan)
 			if ok {
 				span.SetName(fmt.Sprintf("%s(%s)", rwSpan.Name(), message.Params.Name))

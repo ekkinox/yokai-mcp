@@ -6,7 +6,11 @@ import (
 	"github.com/ankorstore/yokai/config"
 	"github.com/ankorstore/yokai/generate/uuid"
 	"github.com/ankorstore/yokai/log"
+	yokaimcpserver "github.com/ekkinox/yokai-mcp/pkg/mcp/server"
+	"github.com/ekkinox/yokai-mcp/pkg/mcp/server/sse"
+	"github.com/ekkinox/yokai-mcp/pkg/mcp/server/stdio"
 	"github.com/mark3labs/mcp-go/server"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/fx"
 )
 
@@ -15,90 +19,166 @@ const ModuleName = "mcp"
 var MCPModule = fx.Module(
 	ModuleName,
 	fx.Provide(
-		ProvideMCPRegistry,
+		// dependencies
+		ProvideMCPServerHooksProvider,
+		ProvideMCPServerFactory,
+		ProvideMCPServerRegistry,
 		ProvideMCPServer,
-		ProvideMCPSSEContextHandler,
+		ProvideMCPSSEServerContextHandler,
+		ProvideMCPSSEServerFactory,
 		ProvideMCPSSEServer,
+		ProvideMCPStdioServerContextHandler,
+		ProvideMCPStdioServerFactory,
+		ProvideMCPStdioServer,
+		// info
+		fx.Annotate(
+			NewMCPModuleInfo,
+			fx.As(new(interface{})),
+			fx.ResultTags(`group:"core-module-infos"`),
+		),
 	),
-	fx.Invoke(func(s *MCPSSEServer) {}),
+	fx.Invoke(func(*sse.MCPSSEServer, *stdio.MCPStdioServer) {}),
 )
 
-type ProvideMCPRegistryParams struct {
+type ProvideMCPServerHooksProviderParams struct {
 	fx.In
-	Tools             []MCPTool             `group:"mcp-tools"`
-	Prompts           []MCPPrompt           `group:"mcp-prompts"`
-	Resources         []MCPResource         `group:"mcp-resources"`
-	ResourceTemplates []MCPResourceTemplate `group:"mcp-resource-templates"`
+	Config *config.Config
 }
 
-func ProvideMCPRegistry(p ProvideMCPRegistryParams) *MCPRegistry {
-	return NewMCPRegistry(p.Tools, p.Prompts, p.Resources, p.ResourceTemplates)
+func ProvideMCPServerHooksProvider(p ProvideMCPServerHooksProviderParams) *yokaimcpserver.MCPServerHooksProvider {
+	return yokaimcpserver.NewMCPServerHooksProvider(p.Config)
+}
+
+type ProvideMCPServerFactoryParams struct {
+	fx.In
+	Config *config.Config
+}
+
+func ProvideMCPServerFactory(p ProvideMCPServerFactoryParams) *yokaimcpserver.MCPServerFactory {
+	return yokaimcpserver.NewMCPServerFactory(p.Config)
+}
+
+type ProvideMCPServerRegistryParams struct {
+	fx.In
+	Tools             []yokaimcpserver.MCPServerTool             `group:"mcp-server-tools"`
+	Prompts           []yokaimcpserver.MCPServerPrompt           `group:"mcp-server-prompts"`
+	Resources         []yokaimcpserver.MCPServerResource         `group:"mcp-server-resources"`
+	ResourceTemplates []yokaimcpserver.MCPServerResourceTemplate `group:"mcp-server-resource-templates"`
+}
+
+func ProvideMCPServerRegistry(p ProvideMCPServerRegistryParams) *yokaimcpserver.MCPServerRegistry {
+	return yokaimcpserver.NewMCPServerRegistry(p.Tools, p.Prompts, p.Resources, p.ResourceTemplates)
 }
 
 type ProvideMCPServerParam struct {
 	fx.In
 	Config   *config.Config
-	Registry *MCPRegistry
+	Provider *yokaimcpserver.MCPServerHooksProvider
+	Factory  *yokaimcpserver.MCPServerFactory
+	Registry *yokaimcpserver.MCPServerRegistry
 }
 
 func ProvideMCPServer(p ProvideMCPServerParam) *server.MCPServer {
-	mcpServer := server.NewMCPServer(
-		p.Config.GetString("modules.mcp.name"),
-		p.Config.GetString("modules.mcp.version"),
-		server.WithResourceCapabilities(true, true),
-		server.WithPromptCapabilities(true),
-		server.WithToolCapabilities(true),
-		server.WithLogging(),
-		server.WithHooks(MCPHooks()),
-	)
+	srv := p.Factory.Create(server.WithHooks(p.Provider.Provide()))
 
-	p.Registry.Register(mcpServer)
+	p.Registry.Register(srv)
 
-	return mcpServer
+	return srv
 }
 
 type ProvideMCPSSEContextHandlerParam struct {
 	fx.In
-	LifeCycle fx.Lifecycle
-	Generator uuid.UuidGenerator
+	Generator      uuid.UuidGenerator
+	TracerProvider oteltrace.TracerProvider
+	Logger         *log.Logger
 }
 
-func ProvideMCPSSEContextHandler(p ProvideMCPSSEContextHandlerParam) *MCPSSEContextHandler {
-	return NewMCPSSEContextHandler(p.Generator)
+func ProvideMCPSSEServerContextHandler(p ProvideMCPSSEContextHandlerParam) *sse.MCPSSEServerContextHandler {
+	return sse.NewMCPSSEServerContextHandler(p.Generator, p.TracerProvider, p.Logger)
+}
+
+type ProvideMCPSSEServerFactoryParams struct {
+	fx.In
+	Config *config.Config
+}
+
+func ProvideMCPSSEServerFactory(p ProvideMCPServerFactoryParams) *sse.MCPSSEServerFactory {
+	return sse.NewMCPSSEServerFactory(p.Config)
 }
 
 type ProvideMCPSSEServerParam struct {
 	fx.In
-	LifeCycle         fx.Lifecycle
-	Context           context.Context
-	Logger            *log.Logger
-	Config            *config.Config
-	MCPServer         *server.MCPServer
-	SSEContextHandler *MCPSSEContextHandler
+	LifeCycle                  fx.Lifecycle
+	Context                    context.Context
+	Logger                     *log.Logger
+	Config                     *config.Config
+	MCPServer                  *server.MCPServer
+	MCPSSEServerFactory        *sse.MCPSSEServerFactory
+	MCPSSEServerContextHandler *sse.MCPSSEServerContextHandler
 }
 
-func ProvideMCPSSEServer(p ProvideMCPSSEServerParam) *MCPSSEServer {
-	sseServer := NewMCPSSEServer(
-		p.MCPServer,
-		server.WithSSEContextFunc(p.SSEContextHandler.Handle()),
-	)
+func ProvideMCPSSEServer(p ProvideMCPSSEServerParam) *sse.MCPSSEServer {
+	sseServer := p.MCPSSEServerFactory.Create(p.MCPServer, server.WithSSEContextFunc(p.MCPSSEServerContextHandler.Handle()))
 
-	p.LifeCycle.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			addr := p.Config.GetString("modules.mcp.address")
+	if p.Config.GetBool("modules.mcp.server.transport.sse.expose") {
+		p.LifeCycle.Append(fx.Hook{
+			OnStart: func(context.Context) error {
+				go sseServer.Start(p.Context)
 
-			p.Logger.Info().Msgf("starting MCP SSE server on %s", addr)
-
-			go sseServer.Start(p.Context, p.Config.GetString("modules.mcp.address"))
-
-			return nil
-		},
-		OnStop: func(ctx context.Context) error {
-			p.Logger.Info().Msg("stopping MCP SSE server")
-
-			return sseServer.Stop(ctx)
-		},
-	})
+				return nil
+			},
+			OnStop: func(ctx context.Context) error {
+				return sseServer.Stop(ctx)
+			},
+		})
+	}
 
 	return sseServer
+}
+
+type ProvideMCPStdioContextHandlerParam struct {
+	fx.In
+	Generator      uuid.UuidGenerator
+	TracerProvider oteltrace.TracerProvider
+	Logger         *log.Logger
+}
+
+func ProvideMCPStdioServerContextHandler(p ProvideMCPStdioContextHandlerParam) *stdio.MCPStdioServerContextHandler {
+	return stdio.NewMCPStdioServerContextHandler(p.Generator, p.TracerProvider, p.Logger)
+}
+
+type ProvideMCPStdioServerFactoryParams struct {
+	fx.In
+	Config *config.Config
+}
+
+func ProvideMCPStdioServerFactory(p ProvideMCPStdioServerFactoryParams) *stdio.MCPStdioServerFactory {
+	return stdio.NewMCPStdioServerFactory(p.Config)
+}
+
+type ProvideMCPStdioServerParam struct {
+	fx.In
+	LifeCycle                    fx.Lifecycle
+	Context                      context.Context
+	Logger                       *log.Logger
+	Config                       *config.Config
+	MCPServer                    *server.MCPServer
+	MCPStdioServerFactory        *stdio.MCPStdioServerFactory
+	MCPStdioServerContextHandler *stdio.MCPStdioServerContextHandler
+}
+
+func ProvideMCPStdioServer(p ProvideMCPStdioServerParam) *stdio.MCPStdioServer {
+	stdioServer := p.MCPStdioServerFactory.Create(p.MCPServer, server.WithStdioContextFunc(p.MCPStdioServerContextHandler.Handle()))
+
+	if p.Config.GetBool("modules.mcp.server.transport.stdio.expose") {
+		p.LifeCycle.Append(fx.Hook{
+			OnStart: func(context.Context) error {
+				go stdioServer.Start(p.Context)
+
+				return nil
+			},
+		})
+	}
+
+	return stdioServer
 }

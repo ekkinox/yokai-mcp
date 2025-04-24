@@ -1,43 +1,86 @@
 package mcp
 
-import "go.uber.org/fx"
+import (
+	"github.com/ekkinox/yokai-mcp/pkg/mcp/server"
+	"go.uber.org/fx"
+)
 
-func AsMCPTool(constructor any) fx.Option {
+func AsMCPServerTool(constructor any) fx.Option {
 	return fx.Provide(
 		fx.Annotate(
 			constructor,
-			fx.As(new(MCPTool)),
-			fx.ResultTags(`group:"mcp-tools"`),
+			fx.As(new(server.MCPServerTool)),
+			fx.ResultTags(`group:"mcp-server-tools"`),
 		),
 	)
 }
 
-func AsMCPPrompt(constructor any) fx.Option {
+func AsMCPServerTools(constructors ...any) fx.Option {
+	options := []fx.Option{}
+
+	for _, constructor := range constructors {
+		options = append(options, AsMCPServerTool(constructor))
+	}
+
+	return fx.Options(options...)
+}
+
+func AsMCPServerPrompt(constructor any) fx.Option {
 	return fx.Provide(
 		fx.Annotate(
 			constructor,
-			fx.As(new(MCPPrompt)),
-			fx.ResultTags(`group:"mcp-prompts"`),
+			fx.As(new(server.MCPServerPrompt)),
+			fx.ResultTags(`group:"mcp-server-prompts"`),
 		),
 	)
 }
 
-func AsMCPResource(constructor any) fx.Option {
+func AsMCPServerPrompts(constructors ...any) fx.Option {
+	options := []fx.Option{}
+
+	for _, constructor := range constructors {
+		options = append(options, AsMCPServerPrompt(constructor))
+	}
+
+	return fx.Options(options...)
+}
+
+func AsMCPServerResource(constructor any) fx.Option {
 	return fx.Provide(
 		fx.Annotate(
 			constructor,
-			fx.As(new(MCPResource)),
-			fx.ResultTags(`group:"mcp-resources"`),
+			fx.As(new(server.MCPServerResource)),
+			fx.ResultTags(`group:"mcp-server-resources"`),
 		),
 	)
 }
 
-func AsMCPResourceTemplate(constructor any) fx.Option {
+func AsMCPServerResources(constructors ...any) fx.Option {
+	options := []fx.Option{}
+
+	for _, constructor := range constructors {
+		options = append(options, AsMCPServerResource(constructor))
+	}
+
+	return fx.Options(options...)
+}
+
+func AsMCPServerResourceTemplate(constructor any) fx.Option {
 	return fx.Provide(
 		fx.Annotate(
 			constructor,
-			fx.As(new(MCPResourceTemplate)),
-			fx.ResultTags(`group:"mcp-resource-templates"`),
+			fx.As(new(server.MCPServerResourceTemplate)),
+			fx.ResultTags(`group:"mcp-server-resource-templates"`),
 		),
 	)
+}
+
+func AsMCPServerResourceTemplates(constructors ...any) fx.Option {
+	options := []fx.Option{}
+
+	for _, constructor := range constructors {
+		options = append(options, AsMCPServerResourceTemplate(constructor))
+	}
+
+	return fx.Options(options...)
 }
