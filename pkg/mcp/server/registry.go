@@ -135,12 +135,12 @@ func (r *MCPServerRegistry) Info() MCPServerRegistryInfo {
 
 	resourcesInfo := make(map[string]string, len(r.resources))
 	for _, resource := range r.resources {
-		promptsInfo[resource.Name()] = reflectInfo(resource.Handle())
+		resourcesInfo[resource.Name()] = reflectInfo(resource.Handle())
 	}
 
 	resourceTemplatesInfo := make(map[string]string, len(r.resourceTemplates))
 	for _, resourceTemplate := range r.resourceTemplates {
-		promptsInfo[resourceTemplate.Name()] = reflectInfo(resourceTemplate.Handle())
+		resourceTemplatesInfo[resourceTemplate.Name()] = reflectInfo(resourceTemplate.Handle())
 	}
 
 	return MCPServerRegistryInfo{

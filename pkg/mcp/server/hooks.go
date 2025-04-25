@@ -29,7 +29,7 @@ func (p *MCPServerHooksProvider) Provide() *server.Hooks {
 	hooks := &server.Hooks{}
 
 	hooks.AddOnRegisterSession(func(ctx context.Context, session server.ClientSession) {
-		log.CtxLogger(ctx).Info().Str(sse.SessionID, session.SessionID()).Msg("MCP session registered")
+		log.CtxLogger(ctx).Info().Str("sessionID", session.SessionID()).Msg("MCP session registered")
 	})
 
 	hooks.AddBeforeAny(func(ctx context.Context, id any, method mcp.MCPMethod, message any) {

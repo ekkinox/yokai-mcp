@@ -73,6 +73,7 @@ This will provide:
 - [http://localhost:8080/books](http://localhost:8080/books): HTTP API endpoint, to list the books
 - [http://localhost:3333/sse](http://localhost:3333/sse): MCP SSE server endpoint, for the MCP clients
 - [http://localhost:8081](http://localhost:8081): Yokai dashboard
+- [http://localhost:16686](http://localhost:16686): Jaeger
 
 ### Configure your MCP client
 
