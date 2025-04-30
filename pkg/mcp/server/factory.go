@@ -6,21 +6,27 @@ import (
 )
 
 const (
-	DefaultServerName    = "yokai-mcp"
+	DefaultServerName    = "MCP Server"
 	DefaultServerVersion = "1.0.0"
 )
 
-type MCPServerFactory struct {
+var _ MCPServerFactory = (*DefaultMCPServerFactory)(nil)
+
+type MCPServerFactory interface {
+	Create(options ...server.ServerOption) *server.MCPServer
+}
+
+type DefaultMCPServerFactory struct {
 	config *config.Config
 }
 
-func NewMCPServerFactory(config *config.Config) *MCPServerFactory {
-	return &MCPServerFactory{
+func NewDefaultMCPServerFactory(config *config.Config) *DefaultMCPServerFactory {
+	return &DefaultMCPServerFactory{
 		config: config,
 	}
 }
 
-func (f *MCPServerFactory) Create(options ...server.ServerOption) *server.MCPServer {
+func (f *DefaultMCPServerFactory) Create(options ...server.ServerOption) *server.MCPServer {
 	name := f.config.GetString("modules.mcp.server.name")
 	if name == "" {
 		name = DefaultServerName
@@ -32,23 +38,8 @@ func (f *MCPServerFactory) Create(options ...server.ServerOption) *server.MCPSer
 	}
 
 	srvOptions := []server.ServerOption{
+		server.WithLogging(),
 		server.WithRecovery(),
-	}
-
-	if f.config.GetBool("modules.mcp.server.capabilities.resource") {
-		srvOptions = append(srvOptions, server.WithResourceCapabilities(true, true))
-	}
-
-	if f.config.GetBool("modules.mcp.server.capabilities.prompt") {
-		srvOptions = append(srvOptions, server.WithPromptCapabilities(true))
-	}
-
-	if f.config.GetBool("modules.mcp.server.capabilities.prompt") {
-		srvOptions = append(srvOptions, server.WithToolCapabilities(true))
-	}
-
-	if f.config.GetBool("modules.mcp.server.capabilities.logging") {
-		srvOptions = append(srvOptions, server.WithLogging())
 	}
 
 	instructions := f.config.GetString("modules.mcp.server.instructions")

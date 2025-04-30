@@ -1,9 +1,7 @@
 package server
 
 import (
-	"reflect"
-	"runtime"
-
+	"github.com/ankorstore/yokai/config"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -35,13 +33,21 @@ type MCPServerResourceTemplate interface {
 }
 
 type MCPServerRegistryInfo struct {
-	Tools             map[string]string
-	Prompts           map[string]string
-	Resources         map[string]string
-	ResourceTemplates map[string]string
+	Capabilities struct {
+		Tools     bool
+		Prompts   bool
+		Resources bool
+	}
+	Registrations struct {
+		Tools             map[string]string
+		Prompts           map[string]string
+		Resources         map[string]string
+		ResourceTemplates map[string]string
+	}
 }
 
 type MCPServerRegistry struct {
+	config            *config.Config
 	tools             map[string]MCPServerTool
 	prompts           map[string]MCPServerPrompt
 	resources         map[string]MCPServerResource
@@ -49,6 +55,7 @@ type MCPServerRegistry struct {
 }
 
 func NewMCPServerRegistry(
+	config *config.Config,
 	tools []MCPServerTool,
 	prompts []MCPServerPrompt,
 	resources []MCPServerResource,
@@ -76,6 +83,7 @@ func NewMCPServerRegistry(
 	}
 
 	return &MCPServerRegistry{
+		config:            config,
 		tools:             toolsMap,
 		prompts:           promptsMap,
 		resources:         resourcesMap,
@@ -84,69 +92,82 @@ func NewMCPServerRegistry(
 }
 
 func (r *MCPServerRegistry) Register(mcpServer *server.MCPServer) {
-	for _, tool := range r.tools {
-		mcpServer.AddTool(
-			mcp.NewTool(tool.Name(), tool.Options()...),
-			tool.Handle(),
-		)
+	if r.config.GetBool("modules.mcp.server.capabilities.tools") {
+		for _, tool := range r.tools {
+			mcpServer.AddTool(
+				mcp.NewTool(tool.Name(), tool.Options()...),
+				tool.Handle(),
+			)
+		}
 	}
 
-	for _, prompt := range r.prompts {
-		mcpServer.AddPrompt(
-			mcp.NewPrompt(prompt.Name(), prompt.Options()...),
-			prompt.Handle(),
-		)
+	if r.config.GetBool("modules.mcp.server.capabilities.prompts") {
+		for _, prompt := range r.prompts {
+			mcpServer.AddPrompt(
+				mcp.NewPrompt(prompt.Name(), prompt.Options()...),
+				prompt.Handle(),
+			)
+		}
 	}
 
-	for _, resource := range r.resources {
-		mcpServer.AddResource(
-			mcp.NewResource(resource.URI(), resource.Name(), resource.Options()...),
-			resource.Handle(),
-		)
-	}
+	if r.config.GetBool("modules.mcp.server.capabilities.resources") {
+		for _, resource := range r.resources {
+			mcpServer.AddResource(
+				mcp.NewResource(resource.URI(), resource.Name(), resource.Options()...),
+				resource.Handle(),
+			)
+		}
 
-	for _, resourceTemplate := range r.resourceTemplates {
-		mcpServer.AddResourceTemplate(
-			mcp.NewResourceTemplate(resourceTemplate.URI(), resourceTemplate.Name(), resourceTemplate.Options()...),
-			resourceTemplate.Handle(),
-		)
+		for _, resourceTemplate := range r.resourceTemplates {
+			mcpServer.AddResourceTemplate(
+				mcp.NewResourceTemplate(resourceTemplate.URI(), resourceTemplate.Name(), resourceTemplate.Options()...),
+				resourceTemplate.Handle(),
+			)
+		}
 	}
 }
 
 func (r *MCPServerRegistry) Info() MCPServerRegistryInfo {
-	reflectInfo := func(x any) string {
-		t := reflect.ValueOf(x).Type()
-		if t.Kind() == reflect.Func {
-			return runtime.FuncForPC(reflect.ValueOf(x).Pointer()).Name()
-		}
-
-		return t.String()
-	}
-
 	toolsInfo := make(map[string]string, len(r.tools))
 	for _, tool := range r.tools {
-		toolsInfo[tool.Name()] = reflectInfo(tool.Handle())
+		toolsInfo[tool.Name()] = FuncName(tool.Handle())
 	}
 
 	promptsInfo := make(map[string]string, len(r.prompts))
 	for _, prompt := range r.prompts {
-		promptsInfo[prompt.Name()] = reflectInfo(prompt.Handle())
+		promptsInfo[prompt.Name()] = FuncName(prompt.Handle())
 	}
 
 	resourcesInfo := make(map[string]string, len(r.resources))
 	for _, resource := range r.resources {
-		resourcesInfo[resource.Name()] = reflectInfo(resource.Handle())
+		resourcesInfo[resource.Name()] = FuncName(resource.Handle())
 	}
 
 	resourceTemplatesInfo := make(map[string]string, len(r.resourceTemplates))
 	for _, resourceTemplate := range r.resourceTemplates {
-		resourceTemplatesInfo[resourceTemplate.Name()] = reflectInfo(resourceTemplate.Handle())
+		resourceTemplatesInfo[resourceTemplate.Name()] = FuncName(resourceTemplate.Handle())
 	}
 
 	return MCPServerRegistryInfo{
-		Tools:             toolsInfo,
-		Prompts:           promptsInfo,
-		Resources:         resourcesInfo,
-		ResourceTemplates: resourceTemplatesInfo,
+		Capabilities: struct {
+			Tools     bool
+			Prompts   bool
+			Resources bool
+		}{
+			Tools:     r.config.GetBool("modules.mcp.server.capabilities.tools"),
+			Prompts:   r.config.GetBool("modules.mcp.server.capabilities.prompts"),
+			Resources: r.config.GetBool("modules.mcp.server.capabilities.resources"),
+		},
+		Registrations: struct {
+			Tools             map[string]string
+			Prompts           map[string]string
+			Resources         map[string]string
+			ResourceTemplates map[string]string
+		}{
+			Tools:             toolsInfo,
+			Prompts:           promptsInfo,
+			Resources:         resourcesInfo,
+			ResourceTemplates: resourceTemplatesInfo,
+		},
 	}
 }

@@ -16,17 +16,23 @@ const (
 	DefaultKeepAliveInterval = 10 * time.Second
 )
 
-type MCPSSEServerFactory struct {
+var _ MCPSSEServerFactory = (*DefaultMCPSSEServerFactory)(nil)
+
+type MCPSSEServerFactory interface {
+	Create(mcpServer *server.MCPServer, options ...server.SSEOption) *MCPSSEServer
+}
+
+type DefaultMCPSSEServerFactory struct {
 	config *config.Config
 }
 
-func NewMCPSSEServerFactory(config *config.Config) *MCPSSEServerFactory {
-	return &MCPSSEServerFactory{
+func NewDefaultMCPSSEServerFactory(config *config.Config) *DefaultMCPSSEServerFactory {
+	return &DefaultMCPSSEServerFactory{
 		config: config,
 	}
 }
 
-func (f *MCPSSEServerFactory) Create(mcpServer *server.MCPServer, options ...server.SSEOption) *MCPSSEServer {
+func (f *DefaultMCPSSEServerFactory) Create(mcpServer *server.MCPServer, options ...server.SSEOption) *MCPSSEServer {
 	addr := f.config.GetString("modules.mcp.server.transport.sse.address")
 	if addr == "" {
 		addr = DefaultAddr
@@ -52,24 +58,36 @@ func (f *MCPSSEServerFactory) Create(mcpServer *server.MCPServer, options ...ser
 		messageEndpoint = DefaultMessageEndpoint
 	}
 
+	keepAlive := f.config.GetBool("modules.mcp.server.transport.sse.keep_alive")
+
 	keepAliveInterval := DefaultKeepAliveInterval
 	keepAliveIntervalConfig := f.config.GetInt("modules.mcp.server.transport.sse.keep_alive_interval")
 	if keepAliveIntervalConfig != 0 {
 		keepAliveInterval = time.Duration(keepAliveIntervalConfig) * time.Second
 	}
 
-	srvOptions := []server.SSEOption{
-		server.WithBaseURL(baseURL),
-		server.WithBasePath(basePath),
-		server.WithSSEEndpoint(sseEndpoint),
-		server.WithMessageEndpoint(messageEndpoint),
+	srvConfig := MCPSSEServerConfig{
+		Address:           addr,
+		BaseURL:           baseURL,
+		BasePath:          basePath,
+		SSEEndpoint:       sseEndpoint,
+		MessageEndpoint:   messageEndpoint,
+		KeepAlive:         keepAlive,
+		KeepAliveInterval: keepAliveInterval,
 	}
 
-	if f.config.GetBool("modules.mcp.server.transport.sse.keep_alive") {
-		srvOptions = append(srvOptions, server.WithKeepAliveInterval(keepAliveInterval))
+	srvOptions := []server.SSEOption{
+		server.WithBaseURL(srvConfig.BaseURL),
+		server.WithBasePath(srvConfig.BasePath),
+		server.WithSSEEndpoint(srvConfig.SSEEndpoint),
+		server.WithMessageEndpoint(srvConfig.MessageEndpoint),
+	}
+
+	if srvConfig.KeepAlive {
+		srvOptions = append(srvOptions, server.WithKeepAliveInterval(srvConfig.KeepAliveInterval))
 	}
 
 	srvOptions = append(srvOptions, options...)
 
-	return NewMCPSSEServer(mcpServer, addr, options...)
+	return NewMCPSSEServer(mcpServer, srvConfig, srvOptions...)
 }

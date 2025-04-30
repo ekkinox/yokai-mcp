@@ -27,7 +27,7 @@ var Bootstrapper = fxcore.NewBootstrapper().WithOptions(
 	fxhttpserver.FxHttpServerModule,
 	fxhttpclient.FxHttpClientModule,
 	fxsql.FxSQLModule,
-	mcp.MCPModule,
+	mcp.MCPServerModule,
 	// dependencies registration
 	Register(),
 )

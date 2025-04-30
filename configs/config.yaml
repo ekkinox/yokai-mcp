@@ -79,10 +79,9 @@ modules:
       name: "Yokai MCP"
       version: 1.0.0
       capabilities:
-        resource: true
-        prompt: true
-        tool: true
-        log: true
+        resources: true
+        prompts: false
+        tools: true
       transport:
         sse:
           expose: true
@@ -95,6 +94,23 @@ modules:
           keep_alive_interval: 10
         stdio:
           expose: false
+      log:
+        request: true
+        response: false
+        exclude:
+          - "ping"
+          - "initialize"
+      trace:
+        request: true
+        response: false
+        exclude:
+          - "ping"
+          - "initialize"
+      metrics:
+        collect:
+          enabled: true
+          namespace: foo
+          subsystem: bar
   sql:
     driver: mysql
     dsn: ${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/${MYSQL_DATABASE}?parseTime=true

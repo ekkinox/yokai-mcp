@@ -5,53 +5,55 @@ import (
 	yokaimcpserver "github.com/ekkinox/yokai-mcp/pkg/mcp/server"
 	"github.com/ekkinox/yokai-mcp/pkg/mcp/server/sse"
 	"github.com/ekkinox/yokai-mcp/pkg/mcp/server/stdio"
-	"github.com/mark3labs/mcp-go/server"
 )
 
-type MCPModuleInfo struct {
+type MCPServerModuleInfo struct {
 	config      *config.Config
-	mspServer   *server.MCPServer
-	mcpRegistry *yokaimcpserver.MCPServerRegistry
+	registry    *yokaimcpserver.MCPServerRegistry
 	sseServer   *sse.MCPSSEServer
 	stdioServer *stdio.MCPStdioServer
 }
 
-func NewMCPModuleInfo(
+func NewMCPServerModuleInfo(
 	config *config.Config,
-	mspServer *server.MCPServer,
-	mcpRegistry *yokaimcpserver.MCPServerRegistry,
+	registry *yokaimcpserver.MCPServerRegistry,
 	sseServer *sse.MCPSSEServer,
 	stdioServer *stdio.MCPStdioServer,
-
-) *MCPModuleInfo {
-	return &MCPModuleInfo{
+) *MCPServerModuleInfo {
+	return &MCPServerModuleInfo{
 		config:      config,
-		mspServer:   mspServer,
-		mcpRegistry: mcpRegistry,
+		registry:    registry,
 		sseServer:   sseServer,
 		stdioServer: stdioServer,
 	}
 }
 
 // Name return the name of the module info.
-func (i *MCPModuleInfo) Name() string {
+func (i *MCPServerModuleInfo) Name() string {
 	return ModuleName
 }
 
 // Data return the data of the module info.
-func (i *MCPModuleInfo) Data() map[string]interface{} {
-	registryInfo := i.mcpRegistry.Info()
+func (i *MCPServerModuleInfo) Data() map[string]interface{} {
+	sseServerInfo := i.sseServer.Info()
+	stdioServerInfo := i.stdioServer.Info()
+	mcpRegistryInfo := i.registry.Info()
 
 	return map[string]interface{}{
-		"server": map[string]interface{}{
-			"transport": map[string]interface{}{
-				"sse":   i.sseServer.Info(),
-				"stdio": i.stdioServer.Info(),
-			},
-			"tools":             registryInfo.Tools,
-			"prompts":           registryInfo.Prompts,
-			"resources":         registryInfo.Resources,
-			"resourceTemplates": registryInfo.ResourceTemplates,
+		"transports": map[string]interface{}{
+			"sse":   sseServerInfo,
+			"stdio": stdioServerInfo,
+		},
+		"capabilities": map[string]interface{}{
+			"tools":     mcpRegistryInfo.Capabilities.Tools,
+			"prompts":   mcpRegistryInfo.Capabilities.Prompts,
+			"resources": mcpRegistryInfo.Capabilities.Resources,
+		},
+		"registrations": map[string]interface{}{
+			"tools":             mcpRegistryInfo.Registrations.Tools,
+			"prompts":           mcpRegistryInfo.Registrations.Prompts,
+			"resources":         mcpRegistryInfo.Registrations.Resources,
+			"resourceTemplates": mcpRegistryInfo.Registrations.ResourceTemplates,
 		},
 	}
 }

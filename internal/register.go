@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"github.com/ankorstore/yokai/fxhealthcheck"
 	"github.com/ankorstore/yokai/fxhttpserver"
 	"github.com/ekkinox/yokai-mcp/internal/domain"
 	"github.com/ekkinox/yokai-mcp/internal/http/handler"
@@ -8,6 +9,7 @@ import (
 	"github.com/ekkinox/yokai-mcp/internal/mcp/resource"
 	"github.com/ekkinox/yokai-mcp/internal/mcp/tool"
 	"github.com/ekkinox/yokai-mcp/pkg/mcp"
+	"github.com/ekkinox/yokai-mcp/pkg/mcp/server"
 	"go.uber.org/fx"
 )
 
@@ -33,5 +35,7 @@ func Register() fx.Option {
 		mcp.AsMCPServerResources(
 			resource.NewWeatherResource,
 		),
+		// mcp healthcheck
+		fxhealthcheck.AsCheckerProbe(server.NewMCPServerProbe),
 	)
 }

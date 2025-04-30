@@ -3,61 +3,60 @@ package sse
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/ankorstore/yokai/generate/uuid"
 	"github.com/ankorstore/yokai/log"
 	"github.com/ankorstore/yokai/trace"
+	yokaimcpservercontext "github.com/ekkinox/yokai-mcp/pkg/mcp/server/context"
 	"github.com/mark3labs/mcp-go/server"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-const (
-	System          = "mcpserver"
-	Transport       = "sse"
-	HeaderRequestID = "X-Request-Id"
-	RequestID       = "requestID"
-	SessionID       = "sessionID"
-)
+var _ MCPSSEServerContextHandler = (*DefaultMCPSSEServerContextHandler)(nil)
 
-type CtxRequestIdKey struct{}
-type CtxSessionIdKey struct{}
-type CtxRootSpanKey struct{}
+type MCPSSEServerContextHandler interface {
+	Handle() server.SSEContextFunc
+}
 
-type MCPSSEServerContextHandler struct {
+type DefaultMCPSSEServerContextHandler struct {
 	generator      uuid.UuidGenerator
 	tracerProvider oteltrace.TracerProvider
 	logger         *log.Logger
 }
 
-func NewMCPSSEServerContextHandler(
+func NewDefaultMCPSSEServerContextHandler(
 	generator uuid.UuidGenerator,
 	tracerProvider oteltrace.TracerProvider,
 	logger *log.Logger,
-) *MCPSSEServerContextHandler {
-	return &MCPSSEServerContextHandler{
+) *DefaultMCPSSEServerContextHandler {
+	return &DefaultMCPSSEServerContextHandler{
 		generator:      generator,
 		tracerProvider: tracerProvider,
 		logger:         logger,
 	}
 }
 
-func (h *MCPSSEServerContextHandler) Handle() server.SSEContextFunc {
+func (h *DefaultMCPSSEServerContextHandler) Handle() server.SSEContextFunc {
 	return func(ctx context.Context, r *http.Request) context.Context {
+		// start time propagation
+		ctx = yokaimcpservercontext.WithStartTime(ctx, time.Now())
+
 		// sessionId propagation
 		sID := r.URL.Query().Get("sessionId")
 
-		ctx = context.WithValue(ctx, CtxSessionIdKey{}, sID)
+		ctx = yokaimcpservercontext.WithSessionID(ctx, sID)
 
 		// requestId propagation
-		rID := r.Header.Get(HeaderRequestID)
+		rID := r.Header.Get("X-Request-Id")
 
 		if rID == "" {
 			rID = h.generator.Generate()
-			r.Header.Set(HeaderRequestID, rID)
+			r.Header.Set("X-Request-Id", rID)
 		}
 
-		ctx = context.WithValue(ctx, CtxRequestIdKey{}, rID)
+		ctx = yokaimcpservercontext.WithRequestID(ctx, rID)
 
 		// tracer propagation
 		ctx = trace.WithContext(ctx, h.tracerProvider)
@@ -68,30 +67,23 @@ func (h *MCPSSEServerContextHandler) Handle() server.SSEContextFunc {
 			oteltrace.WithNewRoot(),
 			oteltrace.WithSpanKind(oteltrace.SpanKindServer),
 			oteltrace.WithAttributes(
-				attribute.String("system", System),
-				attribute.String("transport", Transport),
-				attribute.String(SessionID, sID),
-				attribute.String(RequestID, rID),
+				attribute.String("system", "mcpserver"),
+				attribute.String("mcp.transport", "sse"),
+				attribute.String("mcp.sessionID", sID),
+				attribute.String("mcp.requestID", rID),
 			),
 		)
 
-		ctx = context.WithValue(ctx, CtxRootSpanKey{}, span)
+		ctx = yokaimcpservercontext.WithRootSpan(ctx, span)
 
 		// logger propagation
 		logger := h.logger.
 			With().
-			Str("system", System).
-			Str("transport", Transport).
-			Str(SessionID, sID).
-			Str(RequestID, rID).
+			Str("system", "mcpserver").
+			Str("mcpTransport", "sse").
+			Str("mcpSessionID", sID).
+			Str("mcpRequestID", rID).
 			Logger()
-
-		logger.
-			Info().
-			Str("method", r.Method).
-			Str("uri", r.RequestURI).
-			Str("userAgent", r.UserAgent()).
-			Msg("MCP SSE request")
 
 		return logger.WithContext(ctx)
 	}

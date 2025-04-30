@@ -2,42 +2,51 @@ package stdio
 
 import (
 	"context"
+	"time"
 
 	"github.com/ankorstore/yokai/generate/uuid"
 	"github.com/ankorstore/yokai/log"
 	"github.com/ankorstore/yokai/trace"
+	yokaimcpservercontext "github.com/ekkinox/yokai-mcp/pkg/mcp/server/context"
 	"github.com/mark3labs/mcp-go/server"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-const (
-	System    = "mcpserver"
-	Transport = "stdio"
-)
+var _ MCPStdioServerContextHandler = (*DefaultMCPStdioServerContextHandler)(nil)
 
-type CtxRootSpanKey struct{}
+type MCPStdioServerContextHandler interface {
+	Handle() server.StdioContextFunc
+}
 
-type MCPStdioServerContextHandler struct {
+type DefaultMCPStdioServerContextHandler struct {
 	generator      uuid.UuidGenerator
 	tracerProvider oteltrace.TracerProvider
 	logger         *log.Logger
 }
 
-func NewMCPStdioServerContextHandler(
+func NewDefaultMCPStdioServerContextHandler(
 	generator uuid.UuidGenerator,
 	tracerProvider oteltrace.TracerProvider,
 	logger *log.Logger,
-) *MCPStdioServerContextHandler {
-	return &MCPStdioServerContextHandler{
+) *DefaultMCPStdioServerContextHandler {
+	return &DefaultMCPStdioServerContextHandler{
 		generator:      generator,
 		tracerProvider: tracerProvider,
 		logger:         logger,
 	}
 }
 
-func (h *MCPStdioServerContextHandler) Handle() server.StdioContextFunc {
+func (h *DefaultMCPStdioServerContextHandler) Handle() server.StdioContextFunc {
 	return func(ctx context.Context) context.Context {
+		// start time propagation
+		ctx = yokaimcpservercontext.WithStartTime(ctx, time.Now())
+
+		// requestId propagation
+		rID := h.generator.Generate()
+
+		ctx = yokaimcpservercontext.WithRequestID(ctx, rID)
+
 		// tracer propagation
 		ctx = trace.WithContext(ctx, h.tracerProvider)
 
@@ -47,23 +56,21 @@ func (h *MCPStdioServerContextHandler) Handle() server.StdioContextFunc {
 			oteltrace.WithNewRoot(),
 			oteltrace.WithSpanKind(oteltrace.SpanKindServer),
 			oteltrace.WithAttributes(
-				attribute.String("system", System),
-				attribute.String("transport", Transport),
+				attribute.String("system", "mcpserver"),
+				attribute.String("mcp.transport", "stdio"),
+				attribute.String("mcp.requestID", rID),
 			),
 		)
 
-		ctx = context.WithValue(ctx, CtxRootSpanKey{}, span)
+		ctx = yokaimcpservercontext.WithRootSpan(ctx, span)
 
 		// logger propagation
 		logger := h.logger.
 			With().
-			Str("system", System).
-			Str("transport", Transport).
+			Str("system", "mcpserver").
+			Str("mcpTransport", "stdio").
+			Str("mcpRequestID", rID).
 			Logger()
-
-		logger.
-			Info().
-			Msg("MCP Stdio request")
 
 		return logger.WithContext(ctx)
 	}

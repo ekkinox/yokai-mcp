@@ -8,14 +8,18 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+type MCPStdioServerConfig struct {
+	In  io.Reader
+	Out io.Writer
+}
+
 type MCPStdioServer struct {
 	server  *server.StdioServer
-	in      io.Reader
-	out     io.Writer
+	config  MCPStdioServerConfig
 	running bool
 }
 
-func NewMCPStdioServer(mcpServer *server.MCPServer, in io.Reader, out io.Writer, opts ...server.StdioOption) *MCPStdioServer {
+func NewMCPStdioServer(mcpServer *server.MCPServer, config MCPStdioServerConfig, opts ...server.StdioOption) *MCPStdioServer {
 	stdioServer := server.NewStdioServer(mcpServer)
 
 	for _, opt := range opts {
@@ -24,8 +28,7 @@ func NewMCPStdioServer(mcpServer *server.MCPServer, in io.Reader, out io.Writer,
 
 	return &MCPStdioServer{
 		server: stdioServer,
-		in:     in,
-		out:    out,
+		config: config,
 	}
 }
 
@@ -33,12 +36,8 @@ func (s *MCPStdioServer) Server() *server.StdioServer {
 	return s.server
 }
 
-func (s *MCPStdioServer) In() io.Reader {
-	return s.in
-}
-
-func (s *MCPStdioServer) Out() io.Writer {
-	return s.out
+func (s *MCPStdioServer) Config() MCPStdioServerConfig {
+	return s.config
 }
 
 func (s *MCPStdioServer) Start(ctx context.Context) error {
@@ -48,7 +47,7 @@ func (s *MCPStdioServer) Start(ctx context.Context) error {
 
 	s.running = true
 
-	err := s.server.Listen(ctx, s.in, s.out)
+	err := s.server.Listen(ctx, s.config.In, s.config.Out)
 	if err != nil {
 		logger.Error().Err(err).Msgf("failed to start MCP Stdio server")
 
@@ -58,8 +57,14 @@ func (s *MCPStdioServer) Start(ctx context.Context) error {
 	return err
 }
 
+func (s *MCPStdioServer) Running() bool {
+	return s.running
+}
+
 func (s *MCPStdioServer) Info() map[string]any {
 	return map[string]any{
-		"running": s.running,
+		"status": map[string]any{
+			"running": s.running,
+		},
 	}
 }

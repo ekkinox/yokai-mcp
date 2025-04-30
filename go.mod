@@ -6,15 +6,18 @@ require (
 	github.com/ankorstore/yokai/config v1.5.0
 	github.com/ankorstore/yokai/fxconfig v1.3.0
 	github.com/ankorstore/yokai/fxcore v1.12.0
+	github.com/ankorstore/yokai/fxhealthcheck v1.1.0
 	github.com/ankorstore/yokai/fxhttpclient v1.4.0
 	github.com/ankorstore/yokai/fxhttpserver v1.7.0
 	github.com/ankorstore/yokai/fxsql v1.3.0
 	github.com/ankorstore/yokai/generate v1.3.0
+	github.com/ankorstore/yokai/healthcheck v1.1.0
 	github.com/ankorstore/yokai/log v1.2.0
 	github.com/ankorstore/yokai/trace v1.4.0
 	github.com/huandu/go-sqlbuilder v1.35.0
 	github.com/labstack/echo/v4 v4.13.3
-	github.com/mark3labs/mcp-go v0.22.0
+	github.com/mark3labs/mcp-go v0.24.1
+	github.com/prometheus/client_golang v1.20.5
 	github.com/spf13/cobra v1.9.1
 	go.opentelemetry.io/otel v1.24.0
 	go.opentelemetry.io/otel/sdk v1.24.0
@@ -25,11 +28,9 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/ankorstore/yokai/fxgenerate v1.3.0 // indirect
-	github.com/ankorstore/yokai/fxhealthcheck v1.1.0 // indirect
 	github.com/ankorstore/yokai/fxlog v1.1.0 // indirect
 	github.com/ankorstore/yokai/fxmetrics v1.2.0 // indirect
 	github.com/ankorstore/yokai/fxtrace v1.2.0 // indirect
-	github.com/ankorstore/yokai/healthcheck v1.1.0 // indirect
 	github.com/ankorstore/yokai/httpclient v1.4.0 // indirect
 	github.com/ankorstore/yokai/httpserver v1.6.0 // indirect
 	github.com/ankorstore/yokai/sql v1.1.0 // indirect
@@ -61,7 +62,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/pressly/goose/v3 v3.20.0 // indirect
-	github.com/prometheus/client_golang v1.20.5 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
